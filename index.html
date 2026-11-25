@@ -74,9 +74,43 @@
       padding: 20px 20px 24px;
     }
 
+    .content-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 12px;
+      margin-bottom: 6px;
+    }
+
     h1 {
       font-size: 1.25rem;
-      margin-bottom: 6px;
+      line-height: 1.3;
+    }
+
+    .lang-toggle {
+      display: flex;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 3px;
+      flex-shrink: 0;
+    }
+
+    .lang-btn {
+      padding: 6px 10px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      border: none;
+      border-radius: 6px;
+      background: transparent;
+      color: var(--muted);
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+    }
+
+    .lang-btn.active {
+      background: var(--primary);
+      color: #ffffff;
     }
 
     .subtitle {
@@ -143,7 +177,7 @@
       gap: 10px;
     }
 
-    button, .btn-link {
+    .actions button, .btn-link {
       width: 100%;
       padding: 14px;
       border-radius: 10px;
@@ -173,12 +207,12 @@
     .btn-regen {
       background: transparent;
       color: var(--muted);
-      border: 1px solid var(--border);
-      font-size: 0.9rem;
-      padding: 11px;
+      border: 1px solid var(--border) !important;
+      font-size: 0.9rem !important;
+      padding: 11px !important;
     }
 
-    .btn-regen:hover { color: var(--text); border-color: var(--muted); }
+    .btn-regen:hover { color: var(--text); border-color: var(--muted) !important; }
 
     .error {
       color: #f87171;
@@ -196,50 +230,109 @@
       <img class="logo logo-dss" src="https://promisegroup.com/wp-content/uploads/2026/11/LogoDSS-ColorWhite-F5F5F5.svg" alt="Data Science Summit">
     </header>
     <div class="content">
-    <h1>Twój post z Data Science Summit</h1>
-    <p class="subtitle">Skopiuj tekst, otwórz LinkedIn, wklej treść i dodaj zdjęcie ze stoiska.</p>
-
-    <div id="errorMsg" class="error"></div>
-
-    <div class="post-box">
-      <textarea id="postText" placeholder="Generowanie posta..."></textarea>
-      <div id="loader" class="loader active">
-        <div class="spinner"></div>
-        <span>Piszę post...</span>
+      <div class="content-header">
+        <h1 id="uiTitle">Twój post z Data Science Summit</h1>
+        <div class="lang-toggle" role="group" aria-label="Language">
+          <button id="btnPL" class="lang-btn active" type="button">PL</button>
+          <button id="btnEN" class="lang-btn" type="button">EN</button>
+        </div>
       </div>
-    </div>
+      <p id="uiSubtitle" class="subtitle">Skopiuj tekst, otwórz LinkedIn, wklej treść i dodaj zdjęcie ze stoiska.</p>
 
-    <div class="actions">
-      <button id="copyBtn" class="btn-copy" type="button">1. Kopiuj tekst</button>
-      <a id="linkedinBtn" class="btn-link btn-linkedin" href="https://www.linkedin.com/feed/?shareActive=true" target="_blank" rel="noopener">
-        2. Otwórz LinkedIn
-      </a>
-      <button id="regenBtn" class="btn-regen" type="button">↻ Losuj inną wersję</button>
-    </div>
+      <div id="errorMsg" class="error"></div>
+
+      <div class="post-box">
+        <textarea id="postText" placeholder="Generowanie posta..."></textarea>
+        <div id="loader" class="loader active">
+          <div class="spinner"></div>
+          <span id="uiLoading">Piszę post...</span>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button id="copyBtn" class="btn-copy" type="button">1. Kopiuj tekst</button>
+        <a id="linkedinBtn" class="btn-link btn-linkedin" href="https://www.linkedin.com/feed/?shareActive=true" target="_blank" rel="noopener">
+          2. Otwórz LinkedIn
+        </a>
+        <button id="regenBtn" class="btn-regen" type="button">↻ Losuj inną wersję</button>
+      </div>
     </div>
   </div>
 
   <script>
     const FLOW_URL = "https://default6694006439ae494ba9c7764d4876e1.45.environment.api.powerplatform.com:443/powerautomate/automations/direct/cu/27/workflows/ee9ba19858d04ce2b971a6b0e3a54d14/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=-EO3DUHzTBIBRyGzwLxhvqZa-dMxdmF75PdhW07eNnM";
 
+    const UI = {
+      Polish: {
+        title: "Twój post z Data Science Summit",
+        subtitle: "Skopiuj tekst, otwórz LinkedIn, wklej treść i dodaj zdjęcie ze stoiska.",
+        loading: "Piszę post...",
+        copy: "1. Kopiuj tekst",
+        copied: "✓ Skopiowano! Teraz otwórz LinkedIn",
+        linkedin: "2. Otwórz LinkedIn",
+        regen: "↻ Losuj inną wersję",
+        error: "Nie udało się wygenerować posta. Spróbuj ponownie."
+      },
+      English: {
+        title: "Your Data Science Summit post",
+        subtitle: "Copy the text, open LinkedIn, paste it, and attach your booth photo.",
+        loading: "Writing post...",
+        copy: "1. Copy text",
+        copied: "✓ Copied! Now open LinkedIn",
+        linkedin: "2. Open LinkedIn",
+        regen: "↻ Generate another version",
+        error: "Could not generate the post. Please try again."
+      }
+    };
+
+    let currentLang = "Polish";
+
+    const uiTitle = document.getElementById("uiTitle");
+    const uiSubtitle = document.getElementById("uiSubtitle");
+    const uiLoading = document.getElementById("uiLoading");
     const postText = document.getElementById("postText");
     const loader = document.getElementById("loader");
     const copyBtn = document.getElementById("copyBtn");
+    const linkedinBtn = document.getElementById("linkedinBtn");
     const regenBtn = document.getElementById("regenBtn");
     const errorMsg = document.getElementById("errorMsg");
+    const btnPL = document.getElementById("btnPL");
+    const btnEN = document.getElementById("btnEN");
+
+    function setLanguage(lang) {
+      if (currentLang === lang) return;
+      currentLang = lang;
+
+      btnPL.classList.toggle("active", lang === "Polish");
+      btnEN.classList.toggle("active", lang === "English");
+
+      const t = UI[lang];
+      uiTitle.textContent = t.title;
+      uiSubtitle.textContent = t.subtitle;
+      uiLoading.textContent = t.loading;
+      copyBtn.textContent = t.copy;
+      linkedinBtn.textContent = t.linkedin;
+      regenBtn.textContent = t.regen;
+
+      generatePost();
+    }
 
     async function generatePost() {
+      const t = UI[currentLang];
       loader.classList.add("active");
       errorMsg.style.display = "none";
-      copyBtn.textContent = "1. Kopiuj tekst";
+      copyBtn.textContent = t.copy;
 
       try {
-        const res = await fetch(FLOW_URL, { method: "POST" });
-        if (!res.ok) throw new Error(`Błąd serwera (${res.status})`);
+        const sep = FLOW_URL.includes("?") ? "&" : "?";
+        const res = await fetch(`${FLOW_URL}${sep}lang=${encodeURIComponent(currentLang)}`, {
+          method: "POST"
+        });
+        if (!res.ok) throw new Error(`Server error (${res.status})`);
         const text = await res.text();
         postText.value = text.trim();
       } catch (err) {
-        errorMsg.textContent = "Nie udało się wygenerować posta. Spróbuj ponownie.";
+        errorMsg.textContent = t.error;
         errorMsg.style.display = "block";
         console.error(err);
       } finally {
@@ -249,22 +342,22 @@
 
     copyBtn.addEventListener("click", async () => {
       if (!postText.value) return;
+      const t = UI[currentLang];
       try {
         await navigator.clipboard.writeText(postText.value);
-        copyBtn.textContent = "✓ Skopiowano! Teraz otwórz LinkedIn";
-        setTimeout(() => {
-          copyBtn.textContent = "1. Kopiuj tekst";
-        }, 3000);
+        copyBtn.textContent = t.copied;
+        setTimeout(() => { copyBtn.textContent = UI[currentLang].copy; }, 3000);
       } catch {
         postText.select();
         document.execCommand("copy");
-        copyBtn.textContent = "✓ Skopiowano!";
+        copyBtn.textContent = t.copied;
       }
     });
 
+    btnPL.addEventListener("click", () => setLanguage("Polish"));
+    btnEN.addEventListener("click", () => setLanguage("English"));
     regenBtn.addEventListener("click", generatePost);
 
-    // Automatyczne generowanie przy otwarciu strony z kodu QR
     generatePost();
   </script>
 </body>
